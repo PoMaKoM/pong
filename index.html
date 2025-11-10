@@ -469,28 +469,34 @@
         ball.inAir = false;
         slime.targetScaleY = 1;
         slime.scaleY = 1;
+      } else {
+        startLoop()
       }
     });
 
     async function doCheck() {
       const start = performance.now();
       try {
-        const resp = await fetch(CHECK_URL, {method: 'GET', cache: 'no-store'});
-        const took = Math.round(performance.now() - start);
-        lastLatencyMs = took;
-        if (latencyDisplay) latencyDisplay.textContent = took + ' ms';
-      } catch (e) {
+        await fetch(CHECK_URL, {method: 'GET', cache: 'no-store'});
+      } finally {
         const took = Math.round(performance.now() - start);
         lastLatencyMs = took;
         if (latencyDisplay) latencyDisplay.textContent = took + ' ms';
       }
     }
 
-    let periodicTimer = setInterval(() => {
-      if (running) doCheck();
-    }, INTERVAL_SEC * 1000);
-    // initial check
-    doCheck();
+    async function startLoop() {
+      while (running) {
+        await doCheck();
+        await new Promise(r =>
+          setTimeout(r, INTERVAL_SEC * 1000)
+        );
+      }
+    }
+
+    // стартуем цикл
+    startLoop();
+
   });
 </script>
 </body>
