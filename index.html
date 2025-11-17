@@ -1,638 +1,503 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width,initial-scale=1"/>
-        <title>Ping-Pong</title>
-        <link rel="icon"
-              type="image/svg+xml"
-              href="data:image/svg+xml,
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-<text y='0.9em' font-size='90'>🏓</text>
-              </svg>">
-        <style>
-            :root {
-                --bg: #0f1724;
-                --muted: #98a0b3;
-                --accent: #06b6d4;
-                --accent-2: #7c3aed;
-                --lat-bg: rgba(255, 255, 255, 0.03);
-                --lat-loading-grad: linear-gradient(90deg, rgba(6, 182, 212, 0.12), rgba(124, 58, 237, 0.08));
-            }
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Ping-Pong</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --muted: #98a0b3;
+            --accent: #06b6d4
+        }
 
-            html, body {
-                height: 100%;
-                margin: 0;
-                font-family: Inter, system-ui, Segoe UI, Roboto, Arial
-            }
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: Inter, system-ui, Segoe UI, Roboto, Arial
+        }
 
+        body {
+            background: linear-gradient(180deg, #071126, #07101a);
+            color: #e6eef8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px
+        }
+
+        .card {
+            width: 920px;
+            max-width: 100%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            position: relative
+        }
+
+        .header {
+            padding: 12px 14px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .title h1 {
+            margin: 10px;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .controls .btn {
+            flex-shrink: 0
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: inherit;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer
+        }
+
+        .canvas-wrap {
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        #field {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.005));
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: inset 0 -8px 30px rgba(2, 6, 23, 0.5);
+            max-width: 100%;
+            height: auto
+        }
+
+        .latency-bar {
+            margin: 12px auto 16px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #fff;
+            min-width: 130px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            display: block;
+            width: fit-content
+        }
+
+        .lat-label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500
+        }
+
+
+        /* toggle switch */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 26px;
+            display: inline-block
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            transition: 0.22s cubic-bezier(.2, .9, .3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: inset 0 -4px 10px rgba(2, 6, 23, 0.4)
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.22s cubic-bezier(.2, .9, .3, 1);
+            box-shadow: 0 6px 18px rgba(6, 22, 40, 0.6)
+        }
+
+        .toggle input:focus + .toggle-slider {
+            box-shadow: 0 0 0 6px rgba(6, 182, 212, 0.06)
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: linear-gradient(90deg, var(--accent), #7c3aed);
+            border-color: rgba(255, 255, 255, 0.08)
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(18px)
+        }
+
+
+        /* responsive tweaks */
+        @media (max-width: 720px) {
             body {
-                background: linear-gradient(180deg, #071126, #07101a);
-                color: #e6eef8;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 30px;
-                box-sizing: border-box;
+                padding: 12px
             }
 
             .card {
-                width: 920px;
-                max-width: 100%;
-                background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
-                border-radius: 16px;
-                box-shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
-                overflow: hidden;
-                border: 1px solid rgba(255, 255, 255, 0.03);
-                position: relative
+                border-radius: 12px
             }
 
             .header {
-                padding: 12px 14px;
-                display: flex;
-                gap: 12px;
-                align-items: center;
-                justify-content: space-between;
+                padding: 10px;
+                gap: 10px
             }
 
-            .title h1 {
-                margin: 10px;
-                font-size: 16px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis
-            }
-
-            .controls {
-                display: flex;
-                gap: 8px;
-                align-items: center;
-                flex-wrap: wrap
-            }
-
-            .controls .btn {
-                flex-shrink: 0
-            }
-
-            .btn {
-                background: transparent;
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                color: inherit;
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-weight: 600;
-                cursor: pointer
-            }
-
-            .canvas-wrap {
-                padding: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center
-            }
-
-            #field {
-                background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.005));
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.03);
-                box-shadow: inset 0 -8px 30px rgba(2, 6, 23, 0.5);
-                max-width: 100%;
-                height: auto
-            }
-
-            .latency-bar {
-                margin: 12px auto 16px;
-                padding: 10px 16px;
-                border-radius: 999px;
-                font-weight: 700;
-                font-size: 16px;
-                color: #fff;
-                min-width: 130px;
-                text-align: center;
-                background: var(--lat-bg);
-                display: block;
-                width: fit-content;
-                position: relative;
-                transition: box-shadow 220ms cubic-bezier(.2, .9, .3, 1), transform 220ms cubic-bezier(.2, .9, .3, 1), background 220ms;
-            }
-
-            .lat-label {
-                display: block;
-                font-size: 12px;
-                color: var(--muted);
-                font-weight: 500
-            }
-
-
-
-            /* loading / request-in-flight styles */
-            @keyframes spin {
-                to {
-                    transform: translateY(-50%) rotate(360deg);
-                }
-            }
-
-            @keyframes pulse {
-                0% {
-                    box-shadow: 0 6px 18px rgba(6, 182, 212, 0.06);
-                    transform: translateY(0);
-                }
-                50% {
-                    box-shadow: 0 14px 34px rgba(124, 58, 237, 0.08);
-                    transform: translateY(-2px);
-                }
-                100% {
-                    box-shadow: 0 6px 18px rgba(6, 182, 212, 0.06);
-                    transform: translateY(0);
-                }
-            }
-
-            .latency-bar.loading {
-                background: var(--lat-loading-grad);
-                color: #eafcff;
-                transform: translateY(-2px);
-                animation: pulse 1.2s ease-in-out infinite;
-            }
-
-
-
-            /* small spinner on the right side of bar */
-            .latency-bar.loading::after {
-                content: "";
-                width: 14px;
-                height: 14px;
-                border-radius: 50%;
-                border: 2px solid rgba(255, 255, 255, 0.12);
-                border-top-color: #ffffff;
-                position: absolute;
-                right: 10px;
-                top: 50%;
-                transform: translateY(-50%);
-                animation: spin 0.9s linear infinite;
-                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-            }
-
-
-
-            /* optional animated dots replacing "— ms" while loading */
-            .latency-dots {
-                display: inline-block;
-                width: 36px;
-                text-align: left;
-                font-size: 14px;
-                letter-spacing: 2px;
-            }
-
-            .latency-dots span {
-                display: inline-block;
-                opacity: 0.25;
-                transform: translateY(0);
-                animation: dot 1s infinite;
-            }
-
-            .latency-dots span:nth-child(1) {
-                animation-delay: 0ms;
-            }
-            .latency-dots span:nth-child(2) {
-                animation-delay: 160ms;
-            }
-            .latency-dots span:nth-child(3) {
-                animation-delay: 320ms;
-            }
-
-            @keyframes dot {
-                0% {
-                    opacity: 0.25;
-                    transform: translateY(0);
-                }
-                50% {
-                    opacity: 1;
-                    transform: translateY(-4px);
-                }
-                100% {
-                    opacity: 0.25;
-                    transform: translateY(0);
-                }
-            }
-
-
-
-            /* toggle switch */
-            .toggle-wrap {
-                display: flex;
-                align-items: center;
+            .left {
                 gap: 8px
             }
 
-            .toggle {
-                position: relative;
-                width: 44px;
-                height: 26px;
-                display: inline-block
+            .title h1 {
+                font-size: 15px
             }
 
-            .toggle input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-                position: absolute
+            .controls {
+                width: 100%;
+                justify-content: flex-end
             }
 
-            .toggle-slider {
-                position: absolute;
-                cursor: pointer;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(255, 255, 255, 0.06);
-                border-radius: 999px;
-                transition: 0.22s cubic-bezier(.2, .9, .3, 1);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                box-shadow: inset 0 -4px 10px rgba(2, 6, 23, 0.4)
+            .controls .btn {
+                padding: 8px 10px;
+                font-size: 14px
             }
 
-            .toggle-slider:before {
-                position: absolute;
-                content: "";
-                height: 20px;
-                width: 20px;
-                left: 3px;
-                top: 3px;
-                background: #fff;
-                border-radius: 50%;
-                transition: 0.22s cubic-bezier(.2, .9, .3, 1);
-                box-shadow: 0 6px 18px rgba(6, 22, 40, 0.6)
+            .toggle-wrap {
+                margin-left: 6px
             }
 
-            .toggle input:focus + .toggle-slider {
-                box-shadow: 0 0 0 6px rgba(6, 182, 212, 0.06)
+            /* make canvas scale to width while preserving aspect ratio */
+            .canvas-wrap {
+                padding: 10px
             }
 
-            .toggle input:checked + .toggle-slider {
-                background: linear-gradient(90deg, var(--accent), var(--accent-2));
-                border-color: rgba(255, 255, 255, 0.08)
+            #field {
+                width: 100% !important;
+                height: auto !important
             }
 
-            .toggle input:checked + .toggle-slider:before {
-                transform: translateX(18px)
+            /* latency block stays below the canvas on small screens too */
+            .latency-bar {
+                margin-top: 10px;
+                padding: 8px 12px;
+                font-size: 15px;
+                min-width: 120px
             }
-
-
-
-            /* responsive tweaks */
-            @media (max-width: 720px) {
-                body {
-                    padding: 12px
-                }
-
-                .card {
-                    border-radius: 12px
-                }
-
-                .header {
-                    padding: 10px;
-                    gap: 10px
-                }
-
-                .left {
-                    gap: 8px
-                }
-
-                .title h1 {
-                    font-size: 15px
-                }
-
-                .controls {
-                    width: 100%;
-                    justify-content: flex-end
-                }
-
-                .controls .btn {
-                    padding: 8px 10px;
-                    font-size: 14px
-                }
-
-                .toggle-wrap {
-                    margin-left: 6px
-                }
-
-                /* make canvas scale to width while preserving aspect ratio */
-                .canvas-wrap {
-                    padding: 10px
-                }
-
-                #field {
-                    width: 100% !important;
-                    height: auto !important
-                }
-
-                /* latency block stays below the canvas on small screens too */
-                .latency-bar {
-                    margin-top: 10px;
-                    padding: 8px 12px;
-                    font-size: 15px;
-                    min-width: 120px
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="card" role="region" aria-label="Проверка доступности сервиса">
-            <div class="header">
-                <div class="left">
-                    <div class="title">
-                        <h1>Ping-Pong</h1>
-                    </div>
-                </div>
-
-                <div class="controls">
-                    <button class="btn" id="manualBtn">Manual update</button>
-                    <div class="toggle-wrap" title="Анимация">
-                        <label class="toggle" aria-hidden>
-                            <input id="toggle" type="checkbox" checked aria-label="Анимация слайм"/>
-                            <span class="toggle-slider" aria-hidden></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="canvas-wrap">
-                <canvas id="field" width="760" height="360" role="img"
-                        aria-label="Анимация слайм-блока и подбрасываемого мяча"></canvas>
-            </div>
-
-            <div id="latencyBar" class="latency-bar" aria-live="polite" aria-atomic="true">
-                <span class="lat-label">Latency</span>
-                <div id="latencyDisplay">— ms</div>
+        }
+    </style>
+</head>
+<body>
+<div class="card" role="region" aria-label="Проверка доступности сервиса">
+    <div class="header">
+        <div class="left">
+            <div class="title">
+                <h1>Ping-Pong</h1>
             </div>
         </div>
 
-        <script>
-            // Wrap everything in DOMContentLoaded to avoid null references
-            window.addEventListener('DOMContentLoaded', () => {
+        <div class="controls">
+            <button class="btn" id="manualBtn">Manual update</button>
+            <div class="toggle-wrap" title="Анимация">
+                <label class="toggle" aria-hidden>
+                    <input id="toggle" type="checkbox" checked aria-label="Анимация слайм"/>
+                    <span class="toggle-slider" aria-hidden></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-wrap">
+        <canvas id="field" width="760" height="360" role="img"
+                aria-label="Анимация слайм-блока и подбрасываемого мяча"></canvas>
+    </div>
+
+    <div id="latencyBar" class="latency-bar">
+        <span class="lat-label">Latency</span>
+        <div id="latencyDisplay">— ms</div>
+    </div>
+</div>
+
+<script>
+  // Wrap everything in DOMContentLoaded to avoid null references
+  window.addEventListener('DOMContentLoaded', () => {
+
+    // Settings
+    let CHECK_URL = '/';
+    let INTERVAL_SEC = 1;
+
+    // Canvas
+    const canvas = document.getElementById('field');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Slime + ball
+    const slime = {
+      x: W / 2 - 48,
+      y: H - 96,
+      size: 96,
+      scaleY: 1,
+      targetScaleY: 1,
+      compressAmt: 0,
+      cells: [],
+      wavePhase: 0
+    };
+    let ball = {
+      x: W / 2,
+      y: slime.y - 12,
+      r: 10,
+      vy: 0,
+      inAir: false
+    };
+    const BASE_TOSS_VY = -650;
+    const GRAVITY = 1200;
+    let lastTime = performance.now();
+    let elapsed = 0;
+    let running = true;
+
+    // latency display element (guarded)
+    const latencyDisplay = document.getElementById('latencyDisplay');
+    let lastLatencyMs = 150;
 
 
+    let tossIntervalBase = 1400;
+    let lastToss = performance.now();
 
-                // Settings
-                let CHECK_URL = '/';
-                let INTERVAL_SEC = 1;
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      if (typeof r === 'undefined') r = 6;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
 
-                // Canvas
-                const canvas = document.getElementById('field');
-                const ctx = canvas.getContext('2d');
-                const W = canvas.width;
-                const H = canvas.height;
+    function latencyToFactor(lat) {
+      const f = 1.4 - (lat / 1000) * 0.7;
+      return Math.max(0.7, Math.min(1.6, f));
+    }
 
-                // Slime + ball
-                const slime = {
-                    x: W / 2 - 48,
-                    y: H - 96,
-                    size: 96,
-                    scaleY: 1,
-                    targetScaleY: 1,
-                    compressAmt: 0,
-                    cells: [],
-                    wavePhase: 0
-                };
-                let ball = {
-                    x: W / 2,
-                    y: slime.y - 12,
-                    r: 10,
-                    vy: 0,
-                    inAir: false
-                };
-                const BASE_TOSS_VY = -650;
-                const GRAVITY = 1200;
-                let lastTime = performance.now();
-                let elapsed = 0;
-                let running = true;
+    function drawSlime(s) {
+      const px = s.x, py = s.y, sz = s.size, sy = s.scaleY;
+      const drawH = sz * sy;
+      const topY = py + (sz - drawH);
+      const grad = ctx.createLinearGradient(px, topY, px, topY + drawH);
+      grad.addColorStop(0, '#9ffba0');
+      grad.addColorStop(1, '#4ad63a');
+      ctx.save();
+      roundRect(ctx, px, topY, sz, drawH, 8, true, false);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(px + sz * 0.6, topY + drawH * 0.2, sz * 0.35, drawH * 0.18, -0.2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fillRect(px + 8, py + sz + 6, sz - 16, 6);
+    }
 
-                // latency display element (guarded)
-                const latencyDisplay = document.getElementById('latencyDisplay');
-                let lastLatencyMs = 150;
-                const latencyBar = document.getElementById('latencyBar');
+    function drawScene() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#071126';
+      ctx.fillRect(0, 0, W, H);
+      drawSlime(slime);
+      ctx.beginPath();
+      ctx.fillStyle = '#ffffff';
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.stroke();
+    }
 
-                let tossIntervalBase = 1400;
-                let lastToss = performance.now();
+    function updateSlime(dt) {
+      slime.wavePhase += dt * 1.2;
+      const ease = 1 - Math.pow(0.6, dt * 60);
+      slime.scaleY += (slime.targetScaleY - slime.scaleY) * ease;
+      slime.compressAmt *= Math.max(0, 1 - dt * 6);
+    }
 
-                function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-                    if (typeof r === 'undefined') r = 6;
-                    ctx.beginPath();
-                    ctx.moveTo(x + r, y);
-                    ctx.arcTo(x + w, y, x + w, y + h, r);
-                    ctx.arcTo(x + w, y + h, x, y + h, r);
-                    ctx.arcTo(x, y + h, x, y, r);
-                    ctx.arcTo(x, y, x + w, y, r);
-                    ctx.closePath();
-                    if (fill) ctx.fill();
-                    if (stroke) ctx.stroke();
-                }
+    function computeBounceVy(latencyMs) {
+      // New mapping with three anchors:
+      // latency ~1ms  -> very small hop (just leaves the slime)
+      // latency 500ms -> apex ~ middle of canvas
+      // latency 5000ms -> apex at the very top (ball.r)
+      const slimeTop = slime.y + (slime.size - slime.size * slime.scaleY);
+      const startY = slimeTop - ball.r - 2; // initial center y of the ball
 
-                function latencyToFactor(lat) {
-                    const f = 1.4 - (lat / 1000) * 0.7;
-                    return Math.max(0.7, Math.min(1.6, f));
-                }
+      // anchors
+      const lowApexY = Math.max(startY - 24, startY - 40); // very small hop
+      const middleY = H * 0.5;
+      const topY = ball.r; // center at ball.r means ball touches top
 
-                function drawSlime(s) {
-                    const px = s.x, py = s.y, sz = s.size, sy = s.scaleY;
-                    const drawH = sz * sy;
-                    const topY = py + (sz - drawH);
-                    const grad = ctx.createLinearGradient(px, topY, px, topY + drawH);
-                    grad.addColorStop(0, '#9ffba0');
-                    grad.addColorStop(1, '#4ad63a');
-                    ctx.save();
-                    roundRect(ctx, px, topY, sz, drawH, 8, true, false);
-                    ctx.fillStyle = grad;
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.ellipse(px + sz * 0.6, topY + drawH * 0.2, sz * 0.35, drawH * 0.18, -0.2, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-                    ctx.fill();
-                    ctx.restore();
-                    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-                    ctx.fillRect(px + 8, py + sz + 6, sz - 16, 6);
-                }
+      if (latencyMs <= 500) {
+        // interpolate between lowApexY and middleY
+        const t = Math.max(0, latencyMs) / 500; // 0..1
+        const desiredApexY = lowApexY * (1 - t) + middleY * t;
+        const delta = Math.max(0.001, startY - desiredApexY);
+        return -Math.sqrt(2 * GRAVITY * delta);
+      } else {
+        // interpolate between middleY and topY for latency 500..5000
+        const t = Math.max(0, Math.min(1, (latencyMs - 500) / (5000 - 500)));
+        const desiredApexY = middleY * (1 - t) + topY * t;
+        const delta = Math.max(0.001, startY - desiredApexY);
+        return -Math.sqrt(2 * GRAVITY * delta);
+      }
+    }
 
-                function drawScene() {
-                    ctx.clearRect(0, 0, W, H);
-                    ctx.fillStyle = '#071126';
-                    ctx.fillRect(0, 0, W, H);
-                    drawSlime(slime);
-                    ctx.beginPath();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-                    ctx.stroke();
-                }
+    function updatePhysics(dt) {
+      if (!ball.inAir) {
+        ball.x = slime.x + slime.size / 2;
+        ball.y = slime.y - ball.r - 2;
+      } else {
+        ball.vy += GRAVITY * dt;
+        ball.y += ball.vy * dt;
+        const slimeTop = slime.y + (slime.size - slime.size * slime.scaleY);
+        if (ball.y + ball.r >= slimeTop && ball.vy > 0) {
+          if (ball.x > slime.x && ball.x < slime.x + slime.size) {
+            slime.targetScaleY = 0.62;
+            slime.compressAmt = 1;
+            // On every contact set the same deterministic bounce velocity (depends only on latency)
+            const bounceVy = computeBounceVy(lastLatencyMs);
+            ball.y = slimeTop - ball.r;
+            ball.vy = bounceVy;
+            ball.inAir = true;
+            setTimeout(() => {
+              slime.targetScaleY = 1;
+            }, 140);
+          } else {
+            ball.y = slimeTop - ball.r;
+            ball.vy = 0;
+            ball.inAir = false;
+          }
+        }
+        if (ball.y > H + 100) {
+          ball.inAir = false;
+          ball.vy = 0;
+          ball.x = slime.x + slime.size / 2;
+          ball.y = slime.y - ball.r - 2;
+        }
+      }
+    }
 
-                function updateSlime(dt) {
-                    slime.wavePhase += dt * 1.2;
-                    const ease = 1 - Math.pow(0.6, dt * 60);
-                    slime.scaleY += (slime.targetScaleY - slime.scaleY) * ease;
-                    slime.compressAmt *= Math.max(0, 1 - dt * 6);
-                }
+    function maybeToss(now) {
+      if (!running) return;
+      const jitter = Math.random() * 600 - 300; // keep timing jitter
+      const interval = Math.max(400, tossIntervalBase + jitter);
+      if (!ball.inAir && (now - lastToss) > interval) {
+        // Use the same deterministic bounce velocity for initial toss so all bounces match
+        const vy = computeBounceVy(lastLatencyMs);
+        ball.inAir = true;
+        ball.vy = vy;
+        lastToss = now;
+        slime.targetScaleY = 0.9;
+        setTimeout(() => {
+          slime.targetScaleY = 1;
+        }, 90);
+      }
+    }
 
-                function computeBounceVy(latencyMs) {
+    function loop(now) {
+      const dt = Math.min(0.032, (now - lastTime) / 1000);
+      lastTime = now;
+      elapsed += dt;
+      maybeToss(now);
+      updatePhysics(dt);
+      updateSlime(dt);
+      drawScene();
+      requestAnimationFrame(loop);
+    }
 
+    requestAnimationFrame(loop);
 
-                    // New mapping with three anchors:
-                    // latency ~1ms  -> very small hop (just leaves the slime)
-                    // latency 500ms -> apex ~ middle of canvas
-                    // latency 5000ms -> apex at the very top (ball.r)
-                    const slimeTop = slime.y + (slime.size - slime.size * slime.scaleY);
-                    const startY = slimeTop - ball.r - 2; // initial center y of the ball
+    const manualBtn = document.getElementById('manualBtn');
+    const toggle = document.getElementById('toggle');
+    manualBtn.addEventListener('click', doCheck);
+    toggle.addEventListener('change', () => {
+      running = toggle.checked;
+      if (!running) {
+        ball.inAir = false;
+        slime.targetScaleY = 1;
+        slime.scaleY = 1;
+      } else {
+        startLoop()
+      }
+    });
 
-                    // anchors
-                    const lowApexY = Math.max(startY - 24, startY - 40); // very small hop
-                    const middleY = H * 0.5;
-                    const topY = ball.r; // center at ball.r means ball touches top
+    async function doCheck() {
+      const start = performance.now();
+      try {
+        await fetch(CHECK_URL, {method: 'GET', cache: 'no-store'});
+      } finally {
+        const took = Math.round(performance.now() - start);
+        lastLatencyMs = took;
+        if (latencyDisplay) latencyDisplay.textContent = took + ' ms';
+      }
+    }
 
-                    if (latencyMs <= 500) {
+    async function startLoop() {
+      while (running) {
+        await doCheck();
+        await new Promise(r =>
+          setTimeout(r, INTERVAL_SEC * 1000)
+        );
+      }
+    }
 
+    // стартуем цикл
+    startLoop();
 
-                        // interpolate between lowApexY and middleY
-                        const t = Math.max(0, latencyMs) / 500; // 0..1
-                        const desiredApexY = lowApexY * (1 - t) + middleY * t;
-                        const delta = Math.max(0.001, startY - desiredApexY);
-                        return -Math.sqrt(2 * GRAVITY * delta);
-                    } else {
-
-
-                        // interpolate between middleY and topY for latency 500..5000
-                        const t = Math.max(0, Math.min(1, (latencyMs - 500) / (5000 - 500)));
-                        const desiredApexY = middleY * (1 - t) + topY * t;
-                        const delta = Math.max(0.001, startY - desiredApexY);
-                        return -Math.sqrt(2 * GRAVITY * delta);
-                    }
-                }
-
-                function updatePhysics(dt) {
-                    if (!ball.inAir) {
-                        ball.x = slime.x + slime.size / 2;
-                        ball.y = slime.y - ball.r - 2;
-                    } else {
-                        ball.vy += GRAVITY * dt;
-                        ball.y += ball.vy * dt;
-                        const slimeTop = slime.y + (slime.size - slime.size * slime.scaleY);
-                        if (ball.y + ball.r >= slimeTop && ball.vy > 0) {
-                            if (ball.x > slime.x && ball.x < slime.x + slime.size) {
-                                slime.targetScaleY = 0.62;
-                                slime.compressAmt = 1;
-                                // On every contact set the same deterministic bounce velocity (depends only on latency)
-                                const bounceVy = computeBounceVy(lastLatencyMs);
-                                ball.y = slimeTop - ball.r;
-                                ball.vy = bounceVy;
-                                ball.inAir = true;
-                                setTimeout(() => {
-                                    slime.targetScaleY = 1;
-                                }, 140);
-                            } else {
-                                ball.y = slimeTop - ball.r;
-                                ball.vy = 0;
-                                ball.inAir = false;
-                            }
-                        }
-                        if (ball.y > H + 100) {
-                            ball.inAir = false;
-                            ball.vy = 0;
-                            ball.x = slime.x + slime.size / 2;
-                            ball.y = slime.y - ball.r - 2;
-                        }
-                    }
-                }
-
-                function maybeToss(now) {
-                    if (!running) return ;
-                    const jitter = Math.random() * 600 - 300; // keep timing jitter
-                    const interval = Math.max(400, tossIntervalBase + jitter);
-                    if (!ball.inAir && (now - lastToss) > interval) {
-
-
-                        // Use the same deterministic bounce velocity for initial toss so all bounces match
-                        const vy = computeBounceVy(lastLatencyMs);
-                        ball.inAir = true;
-                        ball.vy = vy;
-                        lastToss = now;
-                        slime.targetScaleY = 0.9;
-                        setTimeout(() => {
-                            slime.targetScaleY = 1;
-                        }, 90);
-                    }
-                }
-
-                function loop(now) {
-                    const dt = Math.min(0.032, (now - lastTime) / 1000);
-                    lastTime = now;
-                    elapsed += dt;
-                    maybeToss(now);
-                    updatePhysics(dt);
-                    updateSlime(dt);
-                    drawScene();
-                    requestAnimationFrame(loop);
-                }
-
-                requestAnimationFrame(loop);
-
-                const manualBtn = document.getElementById('manualBtn');
-                const toggle = document.getElementById('toggle');
-                manualBtn.addEventListener('click', doCheck);
-                toggle.addEventListener('change', () => {
-                    running = toggle.checked;
-                    if (!running) {
-                        ball.inAir = false;
-                        slime.targetScaleY = 1;
-                        slime.scaleY = 1;
-                    } else {
-                        startLoop()
-                    }
-                });
-
-                // helper to set loading visual state
-                function setLatencyLoading(isLoading) {
-                    if (!latencyBar) return ;
-                    if (isLoading) {
-                        latencyBar.classList.add('loading');
-                        // replace display with animated dots while request is in-flight
-                        latencyDisplay.innerHTML = '<span class="latency-dots"><span>·</span><span>·</span><span>·</span></span>';
-                    } else {
-                        latencyBar.classList.remove('loading');
-                    }
-                }
-
-                async
-                function doCheck() {
-                    const start = performance.now();
-                    setLatencyLoading(true); // <--- start animation
-                    try {
-                        await fetch(CHECK_URL, {method: 'GET', cache: 'no-store'});
-                    } catch (e) {
-
-
-                        // ignore network error for display, still measure time
-                    } finally {
-                        const took = Math.round(performance.now() - start);
-                        lastLatencyMs = took;
-                        if (latencyDisplay) latencyDisplay.textContent = took + ' ms';
-                        setLatencyLoading(false); // <--- stop animation
-                    }
-                }
-
-                async
-                function startLoop() {
-                    while (running) {
-                        await doCheck();
-                        await new Promise(r =>
-                            setTimeout(r, INTERVAL_SEC * 1000)
-                        );
-                    }
-                }
-
-                // стартуем цикл
-                startLoop();
-            });
-        </script>
-    </body>
+  });
+</script>
+</body>
 </html>
